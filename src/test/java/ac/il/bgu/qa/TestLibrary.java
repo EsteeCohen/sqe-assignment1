@@ -640,5 +640,91 @@ public class TestLibrary {
         verify(notificationService, times(5)).notifyUser(any(), any());
     }
 
+    // ------------------------------------------------------------------
+    // getBookByISBN
+    // ------------------------------------------------------------------
+
+    @Test
+    void GivenAvailableBook_WhenGetBookByISBN_ThenReturnBookAndNotifyUser() {
+        // Arrange
+        Book book = new Book(VALID_ISBN, VALID_TITLE, VALID_AUTHOR);
+        when(databaseService.getBookByISBN(VALID_ISBN)).thenReturn(book);
+        User user = new User(VALID_USER_NAME, VALID_USER_ID, notificationService);
+        when(databaseService.getUserById(VALID_USER_ID)).thenReturn(user);
+        when(reviewService.getReviewsForBook(VALID_ISBN)).thenReturn(Collections.singletonList("Clear examples."));
+
+        // Act
+        Book result = library.getBookByISBN(VALID_ISBN, VALID_USER_ID);
+
+        // Assert
+        assertSame(book, result);
+        verify(notificationService).notifyUser(VALID_USER_ID, "Reviews for '" + VALID_TITLE + "':\nClear examples.");
+    }
+
+    @Test
+    void GivenInvalidIsbn_WhenGetBookByISBN_ThenThrowIllegalArgumentException() {
+        // Arrange
+        String invalidIsbn = "9780306406158";
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> library.getBookByISBN(invalidIsbn, VALID_USER_ID));
+        assertEquals("Invalid ISBN.", exception.getMessage());
+    }
+
+    @Test
+    void GivenInvalidUserId_WhenGetBookByISBN_ThenThrowIllegalArgumentException() {
+        // Arrange
+        String invalidUserId = "12345678901";
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> library.getBookByISBN(VALID_ISBN, invalidUserId));
+        assertEquals("Invalid user Id.", exception.getMessage());
+    }
+
+    @Test
+    void GivenNoBook_WhenGetBookByISBN_ThenThrowBookNotFoundException() {
+        // Arrange
+        when(databaseService.getBookByISBN(VALID_ISBN)).thenReturn(null);
+
+        // Act & Assert
+        BookNotFoundException exception = assertThrows(BookNotFoundException.class,
+                () -> library.getBookByISBN(VALID_ISBN, VALID_USER_ID));
+        assertEquals("Book not found!", exception.getMessage());
+    }
+
+    @Test
+    void GivenAlreadyBorrowedBook_WhenGetBookByISBN_ThenThrowBookAlreadyBorrowedException() {
+        // Arrange
+        Book book = new Book(VALID_ISBN, VALID_TITLE, VALID_AUTHOR);
+        book.borrow();
+        when(databaseService.getBookByISBN(VALID_ISBN)).thenReturn(book);
+
+        // Act & Assert
+        BookAlreadyBorrowedException exception = assertThrows(BookAlreadyBorrowedException.class,
+                () -> library.getBookByISBN(VALID_ISBN, VALID_USER_ID));
+        assertEquals("Book was already borrowed!", exception.getMessage());
+    }
+
+    @Test
+    void GivenNotificationFailure_WhenGetBookByISBN_ThenStillReturnBook() {
+        // Arrange
+        Book book = new Book(VALID_ISBN, VALID_TITLE, VALID_AUTHOR);
+        when(databaseService.getBookByISBN(VALID_ISBN)).thenReturn(book);
+        User user = new User(VALID_USER_NAME, VALID_USER_ID, notificationService);
+        when(databaseService.getUserById(VALID_USER_ID)).thenReturn(user);
+        when(reviewService.getReviewsForBook(VALID_ISBN)).thenReturn(Collections.singletonList("Clear examples."));
+        doThrow(new NotificationException("Delivery failed."))
+                .when(notificationService).notifyUser(any(), any());
+
+        // Act
+        Book result = library.getBookByISBN(VALID_ISBN, VALID_USER_ID);
+
+        // Assert
+        assertSame(book, result);
+        verify(notificationService, atLeastOnce()).notifyUser(any(), any());
+    }
+
 }
 
