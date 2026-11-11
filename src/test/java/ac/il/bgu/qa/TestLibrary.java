@@ -380,7 +380,7 @@ public class TestLibrary {
             "a23456789012",
             "12345 678901"
     })
-    void GivenInvalidUserId_WhenBorrowBook_throwIllegalArgumentException (String id) {
+    void GivenInvalidUserId_WhenBorrowBook_ThenThrowIllegalArgumentException (String id) {
         // Arrange
         Book book = new Book(VALID_ISBN, VALID_TITLE, VALID_AUTHOR);
         when(databaseService.getBookByISBN(VALID_ISBN)).thenReturn(book);
